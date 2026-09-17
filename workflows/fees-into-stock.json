@@ -1,4 +1,18 @@
-{"name":"Aesop — fees into NVDA","description":"Fables fee income, bought into a tokenised stock through KeeperHub's Robinhood node.",
- "nodes":[{"id":"trigger-1","type":"trigger","data":{"label":"Manual","config":{"triggerType":"Manual"}}},
- {"id":"buy-1","type":"action","data":{"label":"Buy NVDA with USDG","config":{"actionType":"robinhood/trade-stock-token","network":"4663","symbol":"NVDA","side":"buy","amountIn":"2","minAmountOut":"0.008","poolFee":"3000","poolTickSpacing":"60","deadlineSeconds":"600"}}}],
- "edges":[{"id":"e1","source":"trigger-1","target":"buy-1"}],"enabled":true}
+{
+  "name": "Aesop — fees into NVDA",
+  "description": "Fables fee income, guarded and spent on the stock the pool trades, through KeeperHub's Robinhood node.",
+  "nodes": [
+    { "id": "trigger-1", "type": "trigger", "data": { "label": "Every hour", "config": { "triggerType": "Schedule", "scheduleCron": "17 * * * *", "scheduleTimezone": "UTC" } } },
+    { "id": "step-1", "type": "action", "data": { "label": "Fables: claim fee right now", "description": "Fables may raise its cut to 20%. Read it before spending anything.", "config": { "actionType": "web3/read-contract", "network": "4663", "contractAddress": "0x06a889870C8f83640D6816319f72e2aA579b6080", "abi": "[{\"type\":\"function\",\"name\":\"claimFeeBps\",\"stateMutability\":\"view\",\"inputs\":[],\"outputs\":[{\"name\":\"bps\",\"type\":\"uint16\"}]}]", "abiFunction": "claimFeeBps", "functionArgs": "[]" } } },
+    { "id": "step-2", "type": "action", "data": { "label": "Is the market behind NVDA open?", "description": "Refuses on a halt, a pause flag, a stale quote or a pending corporate action.", "config": { "actionType": "robinhood/stock-market-status", "network": "4663", "symbol": "NVDA" } } },
+    { "id": "step-3", "type": "action", "data": { "label": "Condition", "config": { "actionType": "Condition", "condition": "{{@step-2:Is the market behind NVDA open?.tradeable}} == true", "group": { "id": "group-1", "logic": "AND", "rules": [ { "id": "rule-1", "operator": "==", "leftOperand": "{{@step-2:Is the market behind NVDA open?.tradeable}}", "rightOperand": "true" } ] } } } },
+    { "id": "step-4", "type": "action", "data": { "label": "Buy NVDA with USDG", "description": "An explicit pool and a minimum in shares. Never a guessed route.", "config": { "actionType": "robinhood/trade-stock-token", "network": "4663", "symbol": "NVDA", "side": "buy", "amountIn": "2", "minAmountOut": "0.008", "poolFee": "3000", "poolTickSpacing": "60", "deadlineSeconds": "600" } } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "trigger-1", "target": "step-1" },
+    { "id": "e2", "source": "step-1", "target": "step-2" },
+    { "id": "e3", "source": "step-2", "target": "step-3" },
+    { "id": "e4", "source": "step-3", "target": "step-4" }
+  ],
+  "enabled": true
+}

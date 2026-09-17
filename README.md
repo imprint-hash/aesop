@@ -34,6 +34,7 @@ All on Robinhood Chain (chain 4663), sent through KeeperHub's execution API from
 | **Reinvest**, position $4.15 → $4.82 | [`0x250c…834a`](https://robinhoodchain.blockscout.com/tx/0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a) |
 | Approve exactly 3 USDG to Permit2, then the router | [`0x0716…9fd9`](https://robinhoodchain.blockscout.com/tx/0x0716941bf1f2cef18a0cfd61dac7930901b43b9c0a9939c05f2faf51c8f39fd9) · [`0x364c…258c`](https://robinhoodchain.blockscout.com/tx/0x364c7ca6ea8cfbfea67b2c385a74f196d7834fb561dd3aa24859e997e4d2258c) |
 | **Fee money into stock**: 2 USDG → 0.00909 NVDA, through KeeperHub's Robinhood node | [`0x3e9f…3305`](https://robinhoodchain.blockscout.com/tx/0x3e9fdfd7014f48c481d355f10782be837320b96e58e4909ce47619e4e05c3305) |
+| The same buy, run by the **five-step KeeperHub workflow** (5/5 steps, receipt verified by KeeperHub) | [`0xeff3…fb6e`](https://robinhoodchain.blockscout.com/tx/0xeff3c11bbae83daf63f88f250bfd921d8141793f6f390ec263b9a9a021d7fb6e) |
 
 The claim ran with the threshold lowered on purpose (`GAS_MULTIPLE=0.3`), so the whole loop could be shown on a $4 position within one evening. The default is 3×, and the log says which rule was in force.
 
@@ -66,7 +67,20 @@ skipping: $0.0177 is under 3x the $0.0371 gas
 
 The fees an ETH/USDG or NVDA/USDG position earns arrive as USDG. `bin/buy-stock.mjs` spends them on the tokenised stock itself through **KeeperHub's Robinhood node**, the one surface that knows a stock token is not an ordinary ERC-20: it resolves `NVDA` through the issuer's registry rather than a pasted address, refuses while the market behind the token is halted or paused, and takes an explicit pool and a minimum in shares rather than guessing a route.
 
-That node is workflow-only — the execution API answers `Direct execution not supported for "robinhood/get-stock-price"` — so Aesop drives a KeeperHub **workflow** for this step (`workflows/fees-into-stock.json`) and reads the result back from the workflow's own execution record, which carries KeeperHub's own receipt verification:
+That node is workflow-only — the execution API answers `Direct execution not supported for "robinhood/get-stock-price"` — so Aesop drives a KeeperHub **workflow** for this step and reads the result back from the workflow's own execution record, which carries KeeperHub's own receipt verification.
+
+The workflow (`workflows/fees-into-stock.json`) is the guard, not just the trade:
+
+```
+Every hour  →  Fables: what is the claim fee right now?
+            →  Robinhood: is the market behind NVDA open?
+            →  Condition: tradeable == true
+            →  Robinhood: buy NVDA with USDG
+```
+
+It refuses loudly rather than half-sending. The run before this one stopped at the trade with
+`0x5fc5…d168 is not approved to Permit2` — five steps ran, nothing was spent, and the reason
+named the fix.
 
 ```
 status: success   tx 0x3e9f…3305
