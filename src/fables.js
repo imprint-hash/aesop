@@ -9,7 +9,14 @@
  * https://www.fables.fi/docs/contracts-and-addresses
  */
 
+import { setDefaultResultOrder } from "node:dns";
+
 import { address, bytes32ArrayTail, decodeUint, encode, toInt, word, wordAt } from "./abi.js";
+
+// Both the RPC and Fables' site sit behind Cloudflare, which answers AAAA on
+// networks that cannot route IPv6. Without this the first read hangs for ten
+// seconds and then fails with a connect timeout.
+setDefaultResultOrder("ipv4first");
 
 export const CHAIN_ID = 4663; // Robinhood Chain
 export const RPC = process.env.RPC_URL || "https://rpc.mainnet.chain.robinhood.com";

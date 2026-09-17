@@ -5,11 +5,13 @@
   "type": "module",
   "description": "Aesop: collects and reinvests Fables liquidity fees on Robinhood Chain, executed by KeeperHub.",
   "license": "MIT",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "status": "node bin/status.mjs",
-    "claim": "node bin/claim.mjs",
-    "compound": "node bin/compound.mjs",
-    "rewards": "node bin/rewards.mjs"
+    "status": "NODE_OPTIONS=--dns-result-order=ipv4first node bin/status.mjs",
+    "claim": "NODE_OPTIONS=--dns-result-order=ipv4first node bin/claim.mjs",
+    "compound": "NODE_OPTIONS=--dns-result-order=ipv4first node bin/compound.mjs",
+    "rewards": "NODE_OPTIONS=--dns-result-order=ipv4first node bin/rewards.mjs"
   }
 }

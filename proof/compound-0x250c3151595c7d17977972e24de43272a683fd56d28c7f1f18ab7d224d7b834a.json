@@ -1,0 +1,51 @@
+{
+ "when": "2026-09-17T21:35:10.377Z",
+ "liquidity": "1283122650856",
+ "sent": {
+  "accepted": true,
+  "status": 202,
+  "executionId": "l8oqmgyyshgsts9jo2dse",
+  "state": "completed",
+  "hash": "0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a",
+  "link": "https://robinhoodchain.blockscout.com/tx/0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a",
+  "replayed": false,
+  "error": null
+ },
+ "settled": {
+  "executionId": "l8oqmgyyshgsts9jo2dse",
+  "status": "completed",
+  "type": "contract-call",
+  "transactionHash": "0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a",
+  "transactionLink": "https://robinhoodchain.blockscout.com/tx/0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a",
+  "sponsored": false,
+  "receipts": [
+   {
+    "hash": "0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a",
+    "chainId": 4663,
+    "gasUsed": "338885",
+    "verified": true,
+    "verifiedAt": "2026-09-17T21:35:09.002Z",
+    "blockNumber": 65692943,
+    "receiptStatus": "success"
+   }
+  ],
+  "result": {
+   "chainId": 4663,
+   "gasUsed": "19923049150000",
+   "success": true,
+   "gasUsedUnits": "338885",
+   "transactionHash": "0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a",
+   "transactionLink": "https://robinhoodchain.blockscout.com/tx/0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a",
+   "effectiveGasPrice": "58790000"
+  },
+  "error": null,
+  "gasUsedWei": "19923049150000",
+  "gasPriceWei": "58790000",
+  "estimatedCostUsd": null,
+  "retryCount": 0,
+  "network": "4663",
+  "createdAt": "2026-09-17T21:35:01.150Z",
+  "completedAt": "2026-09-17T21:35:09.043Z"
+ },
+ "positionUsd": 4.819131183159364
+}

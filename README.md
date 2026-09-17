@@ -15,8 +15,8 @@ Fables builds the transactions. It never sends them. **KeeperHub sends them.**
 | Command | What happens |
 |---|---|
 | `node bin/status.mjs` | Reads the position through Fables' own lens contract: fees ready, Fables' current cut, whether claiming is paused, whether the range is still earning — then states what it would do, and why |
-| `node bin/claim.mjs` | Collects the fees, but only when they are worth at least 3× the gas |
-| `node bin/compound.mjs` | Puts the collected fees back into the same range, so they earn too |
+| `node bin/claim.mjs` | Collects the fees into your own wallet, but only when they are worth at least 3× the gas. **This is the default: claim and keep.** |
+| `node bin/compound.mjs` | Optional. Puts idle wallet balance (the collected fees included) back into the same range |
 | `node bin/rewards.mjs` | Finds every provider with unclaimed weekly USDG rewards, and can claim for anyone who opts in |
 
 Every write goes the same way: **dry run → send with an idempotency key → wait for settlement → read the chain back**.
@@ -29,6 +29,10 @@ All on Robinhood Chain (chain 4663), sent through KeeperHub's execution API from
 |---|---|
 | Approve exactly 6 USDG to Fables (never unlimited) | [`0xc342…2156`](https://robinhoodchain.blockscout.com/tx/0xc34218b704eb71b4f54b1e6a20a7a3206c5e80b4e9d5822cf165ceeca23a2156) |
 | Deposit into the ETH/USDG market | [`0xe662…9380`](https://robinhoodchain.blockscout.com/tx/0xe6626aa06e63daaac13ae3d955441fa7d16c8cb94ec534a8305c6a7fc8869380) |
+| **Collect the fees** (0.000002578 ETH + 0.011718 USDG, chain then read back at zero) | [`0xf4bc…4e0a`](https://robinhoodchain.blockscout.com/tx/0xf4bc424fbff190e0287d4117ae7470c757ad7f3ea99f2963e0801254dbce4e0a) |
+| **Reinvest**, position $4.15 → $4.82 | [`0x250c…834a`](https://robinhoodchain.blockscout.com/tx/0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a) |
+
+The claim ran with the threshold lowered on purpose (`GAS_MULTIPLE=0.3`), so the whole loop could be shown on a $4 position within one evening. The default is 3×, and the log says which rule was in force.
 
 Receipts for every run are written to `proof/`.
 
@@ -73,9 +77,11 @@ That $410 claim dry-runs successfully for about half a cent of gas. **We do not 
 
 ```bash
 export KEEPERHUB_API_KEY=kh_...      # an organisation key
-node bin/status.mjs                  # read-only
-node bin/claim.mjs --dry             # dry run only
+npm run status                       # read-only
+npm run claim -- --dry               # dry run only
 ```
+
+The npm scripts set `--dns-result-order=ipv4first`: both the RPC and Fables sit behind Cloudflare, which answers AAAA on networks that cannot route IPv6, and the failure looks like a ten-second hang rather than a DNS problem.
 
 Node 20+. No dependencies: the ABI encoding this needs is 60 lines in `src/abi.js`, and every selector is written next to the signature it came from.
 
@@ -92,6 +98,7 @@ Node 20+. No dependencies: the ABI encoding this needs is 60 lines in `src/abi.j
 - **Fables' claim-all does not exist on chain,** so "claim everything" is still one transaction per range. Batching them would need a multicall Fables does not expose.
 - **Compounding is two transactions** (claim, then deposit), because Fables has no "claim and redeposit" path.
 - **KeeperHub's visual workflow builder is not used.** Its `web3/write-contract` config cannot express Fables' pool-key tuple argument, and it has no field for raw calldata, so the schedule runs the same code through KeeperHub's execution API instead. Reported to KeeperHub as feedback.
+- **Compounding needs a healthy gas reserve.** KeeperHub prices gas well above the chain's current rate, and a payable deposit must afford value plus that padding; the dry run does not check affordability, so an under-reserved compound fails at broadcast. Reported to KeeperHub as feedback; `bin/compound.mjs` now reserves 0.0009 ETH.
 - **Amounts are small on purpose.** This is real money on mainnet, not a testnet screenshot.
 
 ## Licence

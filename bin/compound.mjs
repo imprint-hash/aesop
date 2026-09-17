@@ -19,7 +19,7 @@ import hookAbi from "../src/hook-abi.json" with { type: "json" };
 
 const args = new Set(process.argv.slice(2));
 const RANGE = { tickLower: -198410, tickUpper: -198200 };
-const SPEND_RATIO = 0.9; // leave gas behind; never sweep the wallet empty
+const SPEND_RATIO = Number(process.env.SPEND_RATIO || 0.8); // never sweep the wallet empty
 
 const owner = await KH.wallet();
 const { tick, sqrtPriceX96 } = await F.poolPrice();
@@ -27,7 +27,12 @@ const ethUsd = ethUsdFromTick(tick);
 
 const ethBalance = BigInt(await F.rpc("eth_getBalance", [owner, "latest"]));
 const usdgBalance = BigInt(await F.balanceOfUSDG(owner));
-const gasReserve = 500_000_000_000_000n; // 0.0005 ETH, about fifty transactions here
+// KeeperHub pads the gas price well above the chain's current one (a 513k limit
+// at 1.12 gwei on a 0.07 gwei chain), and a payable deposit has to afford value
+// PLUS that padding. The dry run does not check affordability, so the reserve is
+// deliberately generous: an under-reserved compound fails at broadcast, which is
+// the one failure that costs gas to discover.
+const gasReserve = 900_000_000_000_000n; // 0.0009 ETH
 const ethBudget = ethBalance > gasReserve ? BigInt(Math.floor(Number(ethBalance - gasReserve) * SPEND_RATIO)) : 0n;
 const usdgBudget = BigInt(Math.floor(Number(usdgBalance) * SPEND_RATIO));
 
