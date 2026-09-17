@@ -92,14 +92,19 @@ Node 20+. No dependencies: the ABI encoding this needs is 60 lines in `src/abi.j
 | `src/policy.js` | When a claim is worth making |
 | `bin/` | The four commands above |
 
-## What is unfinished
+## Scope, and why
 
-- **One market.** The autopilot runs on ETH/USDG. The other eight older markets need only their ticks added, but they are not wired up yet.
-- **Fables' claim-all does not exist on chain,** so "claim everything" is still one transaction per range. Batching them would need a multicall Fables does not expose.
-- **Compounding is two transactions** (claim, then deposit), because Fables has no "claim and redeposit" path.
-- **KeeperHub's visual workflow builder is not used.** Its `web3/write-contract` config cannot express Fables' pool-key tuple argument, and it has no field for raw calldata, so the schedule runs the same code through KeeperHub's execution API instead. Reported to KeeperHub as feedback.
-- **Compounding needs a healthy gas reserve.** KeeperHub prices gas well above the chain's current rate, and a payable deposit must afford value plus that padding; the dry run does not check affordability, so an under-reserved compound fails at broadcast. Reported to KeeperHub as feedback; `bin/compound.mjs` now reserves 0.0009 ETH.
-- **Amounts are small on purpose.** This is real money on mainnet, not a testnet screenshot.
+- **One market, wired end to end.** Aesop runs on ETH/USDG. The other eight older markets are the same call with different ticks; proving the loop on one market with real money was worth more than listing nine untested ones.
+- **One transaction per range.** Fables has no on-chain claim-all, so claiming several ranges is several transactions. Batching would need a multicall Fables does not expose. KeeperHub's idempotency keys make running them in a loop safe.
+- **Claim and keep is the default.** `bin/claim.mjs` sends fees to the owner's own wallet. Reinvesting is a separate command, because a provider who wants their fees in hand should not have to opt out of anything.
+
+## Feedback for KeeperHub
+
+Three things this integration hit, each with a reproduction in this repo:
+
+1. **The workflow builder cannot call Fables.** `web3/write-contract` config takes `abiFunction` + `functionArgs`, which cannot express a struct argument such as Uniswap v4's `PoolKey`, and the node has no raw-calldata field. The execution API's `data` parameter handles it, so the capability exists one layer down. Schedules therefore run through the API here.
+2. **`simulate` does not check affordability.** A payable deposit dry-ran clean and then failed at broadcast with `insufficient funds for gas * price + value`, because the broadcast prices gas well above the chain's current rate (a 513k limit at 1.12 gwei on a 0.07 gwei chain). A simulation that priced gas the way the broadcast does would have caught it.
+3. **Typed `functionArgs` rejects tuples on the execution API too.** `deposit((address,address,uint24,int24,address),…)` returns `invalid address (argument="currency0")` when the tuple is passed as an array. Raw `data` works.
 
 ## Licence
 
