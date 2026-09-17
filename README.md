@@ -17,7 +17,7 @@ Fables builds the transactions. It never sends them. **KeeperHub sends them.**
 | `node bin/status.mjs` | Reads the position through Fables' own lens contract: fees ready, Fables' current cut, whether claiming is paused, whether the range is still earning — then states what it would do, and why |
 | `node bin/claim.mjs` | Collects the fees into your own wallet, but only when they are worth at least 3× the gas. **This is the default: claim and keep.** |
 | `node bin/compound.mjs` | Optional. Puts idle wallet balance (the collected fees included) back into the same range |
-| `node bin/rewards.mjs` | Finds every provider with unclaimed weekly USDG rewards, and can claim for anyone who opts in |
+| `node bin/rewards.mjs` | Finds every provider with unclaimed weekly USDG rewards, and delivers them, to their own wallet, for any provider who says go |
 
 Every write goes the same way: **dry run → send with an idempotency key → wait for settlement → read the chain back**.
 
@@ -59,7 +59,7 @@ skipping: $0.0177 is under 3x the $0.0371 gas
 - **A broadcast is not a settlement.** Every write polls `GET /api/execute/{id}/status` and then re-reads the position on chain before reporting what was collected.
 - **No key on this machine.** The wallet is KeeperHub's non-custodial Turnkey wallet; this repo builds calldata and nothing else.
 
-## The weekly rewards, and a deliberate limit
+## The weekly rewards
 
 Fables also pays weekly USDG rewards through a Merkle distributor, published at `fables.fi/rewards/proofs.json`. **Anyone may submit anyone's claim** — the contract pays the address named in the proof, never the caller.
 
@@ -71,7 +71,7 @@ worth sweeping (over $0.05): 1180
   0xf4c3b5f85773b16c9e1460cc45fd71d0b302aabc  410.13 USDG
 ```
 
-That $410 claim dry-runs successfully for about half a cent of gas. **We do not send it.** Moving someone's money without being asked is not a feature, even when the money can only ever land in their own wallet. `bin/rewards.mjs` reports and dry-runs for everyone, and sends only for an address that opts in.
+That $410 claim dry-runs successfully for about half a cent of gas. Aesop finds every one of them and, once a provider gives the go-ahead, delivers their rewards to their own wallet through KeeperHub — they never have to open the app, and the money can only ever land with them. `bin/rewards.mjs --for <address> --send` does exactly that.
 
 ## Run it
 
