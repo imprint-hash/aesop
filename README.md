@@ -18,6 +18,7 @@ Fables builds the transactions. It never sends them. **KeeperHub sends them.**
 | `node bin/claim.mjs` | Collects the fees into your own wallet, but only when they are worth at least 3× the gas. **This is the default: claim and keep.** |
 | `node bin/compound.mjs` | Optional. Puts idle wallet balance (the collected fees included) back into the same range |
 | `node bin/rewards.mjs` | Finds every provider with unclaimed weekly USDG rewards, and delivers them, to their own wallet, for any provider who says go |
+| `node bin/buy-stock.mjs` | Spends the collected USDG on the tokenised stock itself, through KeeperHub's Robinhood node |
 
 Every write goes the same way: **dry run → send with an idempotency key → wait for settlement → read the chain back**.
 
@@ -31,6 +32,8 @@ All on Robinhood Chain (chain 4663), sent through KeeperHub's execution API from
 | Deposit into the ETH/USDG market | [`0xe662…9380`](https://robinhoodchain.blockscout.com/tx/0xe6626aa06e63daaac13ae3d955441fa7d16c8cb94ec534a8305c6a7fc8869380) |
 | **Collect the fees** (0.000002578 ETH + 0.011718 USDG, chain then read back at zero) | [`0xf4bc…4e0a`](https://robinhoodchain.blockscout.com/tx/0xf4bc424fbff190e0287d4117ae7470c757ad7f3ea99f2963e0801254dbce4e0a) |
 | **Reinvest**, position $4.15 → $4.82 | [`0x250c…834a`](https://robinhoodchain.blockscout.com/tx/0x250c3151595c7d17977972e24de43272a683fd56d28c7f1f18ab7d224d7b834a) |
+| Approve exactly 3 USDG to Permit2, then the router | [`0x0716…9fd9`](https://robinhoodchain.blockscout.com/tx/0x0716941bf1f2cef18a0cfd61dac7930901b43b9c0a9939c05f2faf51c8f39fd9) · [`0x364c…258c`](https://robinhoodchain.blockscout.com/tx/0x364c7ca6ea8cfbfea67b2c385a74f196d7834fb561dd3aa24859e997e4d2258c) |
+| **Fee money into stock**: 2 USDG → 0.00909 NVDA, through KeeperHub's Robinhood node | [`0x3e9f…3305`](https://robinhoodchain.blockscout.com/tx/0x3e9fdfd7014f48c481d355f10782be837320b96e58e4909ce47619e4e05c3305) |
 
 The claim ran with the threshold lowered on purpose (`GAS_MULTIPLE=0.3`), so the whole loop could be shown on a $4 position within one evening. The default is 3×, and the log says which rule was in force.
 
@@ -58,6 +61,17 @@ skipping: $0.0177 is under 3x the $0.0371 gas
 - **The idempotency key means a retry cannot claim twice.** The key is stable per range per hour, and per address per reward week.
 - **A broadcast is not a settlement.** Every write polls `GET /api/execute/{id}/status` and then re-reads the position on chain before reporting what was collected.
 - **No key on this machine.** The wallet is KeeperHub's non-custodial Turnkey wallet; this repo builds calldata and nothing else.
+
+## Fees, into the stock they came from
+
+The fees an ETH/USDG or NVDA/USDG position earns arrive as USDG. `bin/buy-stock.mjs` spends them on the tokenised stock itself through **KeeperHub's Robinhood node**, the one surface that knows a stock token is not an ordinary ERC-20: it resolves `NVDA` through the issuer's registry rather than a pasted address, refuses while the market behind the token is halted or paused, and takes an explicit pool and a minimum in shares rather than guessing a route.
+
+That node is workflow-only — the execution API answers `Direct execution not supported for "robinhood/get-stock-price"` — so Aesop drives a KeeperHub **workflow** for this step (`workflows/fees-into-stock.json`) and reads the result back from the workflow's own execution record, which carries KeeperHub's own receipt verification:
+
+```
+status: success   tx 0x3e9f…3305
+KeeperHub verified the receipt itself: success, block 65755691
+```
 
 ## The weekly rewards
 
@@ -102,9 +116,11 @@ Node 20+. No dependencies: the ABI encoding this needs is 60 lines in `src/abi.j
 
 Three things this integration hit, each with a reproduction in this repo:
 
-1. **The workflow builder cannot call Fables.** `web3/write-contract` config takes `abiFunction` + `functionArgs`, which cannot express a struct argument such as Uniswap v4's `PoolKey`, and the node has no raw-calldata field. The execution API's `data` parameter handles it, so the capability exists one layer down. Schedules therefore run through the API here.
+1. **The workflow builder cannot call Fables.** `web3/write-contract` config takes `abiFunction` + `functionArgs`, which cannot express a struct argument such as Uniswap v4's `PoolKey`, and the node has no raw-calldata field. The execution API's `data` parameter handles it, so the capability exists one layer down. The Fables steps therefore run through the API, while the Robinhood step runs as a workflow.
 2. **`simulate` does not check affordability.** A payable deposit dry-ran clean and then failed at broadcast with `insufficient funds for gas * price + value`, because the broadcast prices gas well above the chain's current rate (a 513k limit at 1.12 gwei on a 0.07 gwei chain). A simulation that priced gas the way the broadcast does would have caught it.
 3. **Typed `functionArgs` rejects tuples on the execution API too.** `deposit((address,address,uint24,int24,address),…)` returns `invalid address (argument="currency0")` when the tuple is passed as an array. Raw `data` works.
+4. **Plugin actions are workflow-only, and the two surfaces disagree about where a run lives.** `POST /api/execute/robinhood/trade-stock-token` refuses with "Direct execution not supported", which is clear enough; but a workflow run's id is then *not* readable from `GET /api/execute/{id}/status` ("Execution not found") — it only appears in `GET /api/workflows/{id}/executions`. One id, two lookup paths, and the error does not say which one to use.
+5. **`web3Connection` is rejected on plugin action config.** The workflows API documents it as the sender-routing field, but `robinhood/trade-stock-token` returns `UNKNOWN_FIELD` for it.
 
 ## Licence
 

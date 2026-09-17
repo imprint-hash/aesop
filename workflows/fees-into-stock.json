@@ -1,0 +1,4 @@
+{"name":"Aesop — fees into NVDA","description":"Fables fee income, bought into a tokenised stock through KeeperHub's Robinhood node.",
+ "nodes":[{"id":"trigger-1","type":"trigger","data":{"label":"Manual","config":{"triggerType":"Manual"}}},
+ {"id":"buy-1","type":"action","data":{"label":"Buy NVDA with USDG","config":{"actionType":"robinhood/trade-stock-token","network":"4663","symbol":"NVDA","side":"buy","amountIn":"2","minAmountOut":"0.008","poolFee":"3000","poolTickSpacing":"60","deadlineSeconds":"600"}}}],
+ "edges":[{"id":"e1","source":"trigger-1","target":"buy-1"}],"enabled":true}
