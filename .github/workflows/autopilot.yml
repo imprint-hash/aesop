@@ -1,0 +1,35 @@
+# The autopilot's schedule. Runs every hour, decides, and only sends when the
+# fees are worth the gas. The signing happens inside KeeperHub, never here.
+name: Autopilot
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "Dry run only"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KEEPERHUB_API_KEY: ${{ secrets.KEEPERHUB_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: What does it see?
+        run: node bin/status.mjs
+      - name: Collect fees when they are worth the gas
+        run: node bin/claim.mjs ${{ inputs.dry && '--dry' || '' }}
+      - name: Put them back to work
+        if: success()
+        run: node bin/compound.mjs --dry
