@@ -1,6 +1,6 @@
 # The autopilot's schedule. Runs every hour, decides, and only sends when the
 # fees are worth the gas. The signing happens inside KeeperHub, never here.
-name: Autopilot
+name: Aesop
 
 on:
   schedule:
